@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/table";
 import {
   useGetPaymentsQuery,
-  useGetPropertyLeasesQuery,
   useGetPropertyQuery,
 } from "@/state/api";
 import { ArrowDownToLine, ArrowLeft, Check, Download } from "lucide-react";
@@ -24,26 +23,34 @@ import React from "react";
 const PropertyTenants = () => {
   const { id } = useParams();
   const propertyId = Number(id);
-
+  
+  // Lấy property và payments (leases không cần thiết nữa vì payments đã có lease & tenant)
   const { data: property, isLoading: propertyLoading } =
     useGetPropertyQuery(propertyId);
-  const { data: leases, isLoading: leasesLoading } =
-    useGetPropertyLeasesQuery(propertyId);
   const { data: payments, isLoading: paymentsLoading } =
     useGetPaymentsQuery(propertyId);
 
-  if (propertyLoading || leasesLoading || paymentsLoading) return <Loading />;
+  if (propertyLoading || paymentsLoading) return <Loading />;
 
-  const getCurrentMonthPaymentStatus = (leaseId: number) => {
-    const currentDate = new Date();
-    const currentMonthPayment = payments?.find(
-      (payment) =>
-        payment.leaseId === leaseId &&
-        new Date(payment.dueDate).getMonth() === currentDate.getMonth() &&
-        new Date(payment.dueDate).getFullYear() === currentDate.getFullYear()
-    );
-    return currentMonthPayment?.paymentStatus || "Not Paid";
-  };
+  // Chuẩn format lại payments
+  const formattedPayments = payments?.map((payment) => ({
+    id: payment.id,
+    amountDue: payment.amountDue,
+    amountPaid: payment.amountPaid,
+    dueDate: payment.dueDate,
+    paymentDate: payment.paymentDate,
+    paymentStatus: payment.paymentStatus,
+    leaseId: payment.leaseId,
+    tenant: payment.lease.tenant,
+    lease: {
+      startDate: payment.lease.startDate,
+      endDate: payment.lease.endDate,
+    },
+  }));
+
+  // Hàm định dạng ngày
+  const formatDate = (dateString: string | Date) =>
+    new Date(dateString).toLocaleDateString();
 
   return (
     <div className="dashboard-container">
@@ -59,16 +66,16 @@ const PropertyTenants = () => {
 
       <Header
         title={property?.name || "My Property"}
-        subtitle="Manage tenants and leases for this property"
+        subtitle="Manage tenants, leases and payments for this property"
       />
 
       <div className="w-full space-y-6">
         <div className="mt-8 bg-white rounded-xl shadow-md overflow-hidden p-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Tenants Overview</h2>
+              <h2 className="text-2xl font-bold mb-1">Payments Overview</h2>
               <p className="text-sm text-gray-500">
-                Manage and view all tenants for this property.
+                Manage and view all payments for this property.
               </p>
             </div>
             <div>
@@ -84,72 +91,51 @@ const PropertyTenants = () => {
           <hr className="mt-4 mb-1" />
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Lease Period</TableHead>
-                  <TableHead>Monthly Rent</TableHead>
-                  <TableHead>Current Month Status</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leases?.map((lease) => (
-                  <TableRow key={lease.id} className="h-24">
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <Image
-                          src="/landing-i1.png"
-                          alt={lease.tenant.name}
-                          width={40}
-                          height={40}
-                          className="rounded-full"
-                        />
-                        <div>
-                          <div className="font-semibold">
-                            {lease.tenant.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {lease.tenant.email}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        {new Date(lease.startDate).toLocaleDateString()} -
-                      </div>
-                      <div>{new Date(lease.endDate).toLocaleDateString()}</div>
-                    </TableCell>
-                    <TableCell>${lease.rent.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          getCurrentMonthPaymentStatus(lease.id) === "Paid"
-                            ? "bg-green-100 text-green-800 border-green-300"
-                            : "bg-red-100 text-red-800 border-red-300"
-                        }`}
-                      >
-                        {getCurrentMonthPaymentStatus(lease.id) === "Paid" && (
-                          <Check className="w-4 h-4 inline-block mr-1" />
-                        )}
-                        {getCurrentMonthPaymentStatus(lease.id)}
-                      </span>
-                    </TableCell>
-                    <TableCell>{lease.tenant.phoneNumber}</TableCell>
-                    <TableCell>
-                      <button
-                        className={`border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex 
-                      items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50`}
-                      >
-                        <ArrowDownToLine className="w-4 h-4 mr-1" />
-                        Download Agreement
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Payment ID</TableHead>
+              <TableHead>Amount Due</TableHead>
+              <TableHead>Amount Paid</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead>Payment Date</TableHead>
+              <TableHead>Payment Status</TableHead>
+              <TableHead>Action</TableHead>
+            </TableRow>
+          </TableHeader>
+<TableBody>
+  {formattedPayments?.map((payment) => (
+    <TableRow key={payment.id} className="h-24">
+      <TableCell>{payment.id}</TableCell>
+      <TableCell>${payment.amountDue.toFixed(2)}</TableCell>
+      <TableCell>${payment.amountPaid.toFixed(2)}</TableCell>
+      <TableCell>{formatDate(payment.dueDate)}</TableCell>
+      <TableCell>{formatDate(payment.paymentDate)}</TableCell>
+      <TableCell>
+        <span
+          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+            payment.paymentStatus === "Paid"
+              ? "bg-green-100 text-green-800 border-green-300"
+              : "bg-red-100 text-red-800 border-red-300"
+          }`}
+        >
+          {payment.paymentStatus === "Paid" && (
+            <Check className="w-4 h-4 inline-block mr-1" />
+          )}
+          {payment.paymentStatus}
+        </span>
+      </TableCell>
+      <TableCell>
+        <button
+          className={`border border-gray-300 text-gray-700 py-2 px-4 rounded-md flex 
+            items-center justify-center font-semibold hover:bg-primary-700 hover:text-primary-50`}
+        >
+          <ArrowDownToLine className="w-4 h-4 mr-1" />
+          Download Agreement
+        </button>
+      </TableCell>
+    </TableRow>
+  ))}
+</TableBody>
             </Table>
           </div>
         </div>

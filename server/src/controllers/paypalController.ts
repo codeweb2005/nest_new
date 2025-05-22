@@ -78,7 +78,7 @@ export const PaypalService = async (
             .status(500)
             .json({ message: `Error creating payment: ${error.message}` });
     }
-    
+  
 
 }
 export const ExecutePayment = async (req: Request, res: Response) => {
@@ -108,9 +108,39 @@ export const ExecutePayment = async (req: Request, res: Response) => {
       where: { id: applicationId },
       data: { status: "Approved" },
     });
+    
+const leaseId = applicationId; // hoặc lấy đúng id của lease
+
+// 1. Lấy lease từ database
+const lease = await prisma.lease.findUnique({
+  where: { id: leaseId },
+});
+
+if (!lease) {
+  throw new Error("Lease not found");
+}
+
+// 2. Tạo payment mới dựa trên dữ liệu lease vừa lấy
+const payment = await prisma.payment.create({
+  data: {
+    amountDue: lease.rent,       // lấy từ lease
+    amountPaid: lease.deposit,   // lấy từ lease
+    paymentDate: new Date(),
+    dueDate: new Date(),          // bạn có thể tùy chỉnh ngày đáo hạn
+    paymentStatus: "Paid",        // giá trị enum hoặc string tùy model
+    leaseId: lease.id,
+    tenantCognitoId: lease.tenantCognitoId, // đảm bảo lease có trường này
+  },
+  include: {
+    lease: true,
+  },
+});
+    
+
 
     res.status(200).json({ message: "Payment executed and application updated" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 };
+

@@ -111,12 +111,14 @@ model Tenant {
   name        String
   email       String
   phoneNumber String
-  stripeCustomerId string
+
 
   properties   Property[]    @relation("TenantProperties")
   favorites    Property[]    @relation("TenantFavorites")
   applications Application[]
   leases       Lease[]
+  payments    Payment[]
+
 }
 
 model Location {
@@ -171,6 +173,8 @@ model Payment {
   paymentDate   DateTime
   paymentStatus PaymentStatus
   leaseId       Int
+  tenantCognitoId String
 
+  tenant      Tenant       @relation(fields: [tenantCognitoId], references: [cognitoId])
   lease Lease @relation(fields: [leaseId], references: [id])
 }

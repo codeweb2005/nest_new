@@ -273,7 +273,7 @@ export const api = createApi({
     }),
 
     getPropertyLeases: build.query<Lease[], number>({
-      query: (propertyId) => `properties/${propertyId}/leases`,
+      query: (propertyId) => `leases/${propertyId}/leases_admin`,
       providesTags: ["Leases"],
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, {
@@ -283,7 +283,7 @@ export const api = createApi({
     }),
 
     getPayments: build.query<Payment[], number>({
-      query: (leaseId) => `leases/${leaseId}/payments`,
+      query: (leaseId) => `leases/9/payments`,
       providesTags: ["Payments"],
       async onQueryStarted(_, { queryFulfilled }) {
         await withToast(queryFulfilled, {
@@ -349,20 +349,20 @@ export const api = createApi({
       },
     }),
 
-    // createPayment: build.mutation<Payment, Partial<Payment>>({
-    //   query: (body) => ({
-    //     url: `payments`,
-    //     method: "POST",
-    //     body: body,
-    //   }),
-    //   invalidatesTags: ["Payments"],
-    //   async onQueryStarted(_, { queryFulfilled }) {
-    //     await withToast(queryFulfilled, {
-    //       success: "Payment created successfully!",
-    //       error: "Failed to create payment.",
-    //     });
-    //   },
-    // }),
+    createPayment: build.mutation<Payment, Partial<Payment>>({
+      query: (body) => ({
+        url: `payments`,
+        method: "POST",
+        body: body,
+      }),
+      invalidatesTags: ["Payments"],
+      async onQueryStarted(_, { queryFulfilled }) {
+        await withToast(queryFulfilled, {
+          success: "Payment created successfully!",
+          error: "Failed to create payment.",
+        });
+      },
+    }),
 
 
   }),
